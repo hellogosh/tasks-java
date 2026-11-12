@@ -1,0 +1,3 @@
+QA-1;Write tests;OPEN;HIGH
+QA-2;Fix bug;DONE;MEDIUM
+QA-3;Review checks;OPEN;LOW

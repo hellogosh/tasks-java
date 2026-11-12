@@ -1,0 +1,97 @@
+plugins {
+    id 'java'
+}
+
+// Курс идет на Java 25 и Gradle 9.6.1 (wrapper). Запасной вариант только для тренера,
+// если JDK 25 на машине нет: ./gradlew test -PtrainingJavaVersion=21
+def trainingJavaVersion = (findProperty('trainingJavaVersion') ?: '25') as int
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(trainingJavaVersion)
+    }
+}
+
+// Все библиотеки курса подключены сразу, чтобы они скачались один раз до первого занятия.
+dependencies {
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testImplementation 'org.assertj:assertj-core:3.27.7'
+    testImplementation 'net.datafaker:datafaker:2.5.4'
+    testImplementation 'com.h2database:h2:2.4.240'
+    testImplementation 'io.rest-assured:rest-assured:6.0.0'
+    // REST Assured превращает JSON в объект через Jackson или Gson, если найдёт их; Gson подключаем явно
+    testImplementation 'com.google.code.gson:gson:2.13.2'
+    testImplementation 'com.microsoft.playwright:playwright:1.59.0'
+    testImplementation 'org.aeonbits.owner:owner:1.0.12'
+}
+
+test {
+    useJUnitPlatform {
+        excludeTags 'ui'
+    }
+
+    testLogging {
+        events 'passed', 'skipped', 'failed'
+    }
+}
+
+// Свои задачи Test берут тестовые классы явно: без этого Gradle 9 их не запустит.
+tasks.withType(Test).configureEach {
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+}
+
+// UI-тесты Playwright при первом запуске скачивают браузер, поэтому идут отдельной задачей.
+tasks.register('uiTest', Test) {
+    useJUnitPlatform {
+        includeTags 'ui'
+    }
+
+    testLogging {
+        events 'passed', 'skipped', 'failed'
+    }
+}
+
+// Учебный стаб трекера: ./gradlew runStub, адрес http://localhost:8080/tasks/QA-1
+tasks.register('runStub', JavaExec) {
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'training.tracker.stub.TrackerStub'
+}
+
+// Скачать браузер Playwright заранее, до занятия: ./gradlew installBrowsers
+tasks.register('installBrowsers', JavaExec) {
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.microsoft.playwright.CLI'
+    args = ['install', 'chromium']
+}
+
+tasks.register('smokeTest', Test) {
+    useJUnitPlatform() {
+        includeTags 'smoke'
+        excludeTags 'ui'
+    }
+    testLogging {
+        events 'passed', 'skipped', 'failed'
+    }
+
+}
+tasks.register('regression', Test) {
+    useJUnitPlatform() {
+        includeTags 'regression'
+    }
+    testLogging {
+        events 'passed', 'skipped', 'failed'
+    }
+
+}
+tasks.register('dbTest', Test) {
+    useJUnitPlatform() {
+        includeTags 'db'
+    }
+    testLogging {
+        events 'passed', 'skipped', 'failed'
+    }
+
+}
